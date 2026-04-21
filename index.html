@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream VIP - Panel de Control</title>
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #000; color: white; font-family: sans-serif; overflow-x: hidden; }
+        .vjs-theme-city .vjs-control-bar { background-color: rgba(0,0,0,0.8); }
+        .canal-btn:focus { background: #1e40af !important; outline: 3px solid #60a5fa; transform: scale(1.02); }
+        .sidebar { max-height: 60vh; overflow-y: auto; }
+        .categoria-badge { cursor: pointer; transition: 0.3s; }
+        .categoria-badge:hover { background: #3b82f6; }
+        .active-cat { background: #2563eb !important; border-color: white; }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-black text-blue-600 tracking-tighter italic">MEGA<span class="text-white">TV</span></h1>
+            <div id="reloj" class="text-xl font-mono bg-zinc-900 px-4 py-1 rounded-lg border border-zinc-800">00:00</div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2">
+                <div class="bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl border border-zinc-800">
+                    <video id="reproductor" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto"></video>
+                </div>
+                <div class="mt-4 p-4 bg-zinc-900 rounded-xl flex justify-between items-center">
+                    <div>
+                        <h2 id="nombre-canal-actual" class="text-xl font-bold text-blue-400">Selecciona un canal</h2>
+                        <p class="text-zinc-500 text-sm">Streaming en Alta Definición</p>
+                    </div>
+                    <a href="https://wa.me/5491122334455" class="bg-green-600 hover:bg-green-700 p-3 rounded-full font-bold flex items-center transition">
+                        <i class="fab fa-whatsapp mr-2"></i> Pagar VIP
+                    </a>
+                </div>
+            </div>
+
+            <div class="lg:col-span-1 flex flex-col space-y-4">
+                <div class="flex flex-wrap gap-2" id="contenedor-categorias">
+                    <button onclick="filtrar('Todos')" class="categoria-badge active-cat px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-xs font-bold uppercase">Todos</button>
+                    <button onclick="filtrar('Deportes')" class="categoria-badge px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-xs font-bold uppercase">Deportes</button>
+                    <button onclick="filtrar('Cine')" class="categoria-badge px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-xs font-bold uppercase">Cine</button>
+                    <button onclick="filtrar('Variedades')" class="categoria-badge px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-xs font-bold uppercase">Variedades</button>
+                </div>
+
+                <input type="text" id="buscador" placeholder="Buscar canal..." class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 outline-none focus:border-blue-500">
+
+                <div id="lista-canales" class="sidebar space-y-2 pr-2">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <script>
+        const player = videojs('reproductor');
+        
+        // --- AQUÍ ESTÁN TUS CANALES DIVIDIDOS POR CATEGORÍA ---
+        const canales = [
+            { nombre: "CINE CANAL", cat: "Cine", url: "http://45.5.151.147:8000/Cinecanal/index.m3u8" },
+            { nombre: "TNT HD", cat: "Cine", url: "http://45.5.151.147:8000/TNT/index.m3u8" },
+            { nombre: "FOX SPORTS", cat: "Deportes", url: "http://45.5.151.147:8000/FoxSports/index.m3u8" },
+            { nombre: "ESPN PREMIUM", cat: "Deportes", url: "http://45.5.151.147:8000/ESPN/index.m3u8" },
+            { nombre: "DISCOVERY", cat: "Variedades", url: "http://45.5.151.147:8000/Discovery/index.m3u8" }
+        ];
+
+        function cargarCanales(categoria = "Todos", busqueda = "") {
+            const lista = document.getElementById('lista-canales');
+            lista.innerHTML = "";
+
+            const filtrados = canales.filter(c => {
+                const matchCat = categoria === "Todos" || c.cat === categoria;
+                const matchBus = c.nombre.toLowerCase().includes(busqueda.toLowerCase());
+                return matchCat && matchBus;
+            });
+
+            filtrados.forEach(canal => {
+                const btn = document.createElement('button');
+                btn.className = "canal-btn w-full flex items-center p-4 bg-zinc-900 rounded-xl hover:bg-zinc-800 border border-transparent transition text-left";
+                btn.innerHTML = `
+                    <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center mr-4 text-blue-500">
+                        <i class="fas fa-play text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm text-white">${canal.nombre}</div>
+                        <div class="text-[10px] text-zinc-500 uppercase">${canal.cat}</div>
+                    </div>
+                `;
+                btn.onclick = () => {
+                    document.getElementById('nombre-canal-actual').innerText = canal.nombre;
+                    // Usamos un proxy para evitar bloqueos
+                    const finalURL = "https://corsproxy.io/?" + encodeURIComponent(canal.url);
+                    player.src({ src: finalURL, type: 'application/x-mpegURL' });
+                    player.play();
+                    if(window.innerWidth < 1024) window.scrollTo({top:0, behavior:'smooth'});
+                };
+                lista.appendChild(btn);
+            });
+        }
+
+        function filtrar(cat) {
+            // Actualizar botones
+            document.querySelectorAll('.categoria-badge').forEach(b => b.classList.remove('active-cat'));
+            event.target.classList.add('active-cat');
+            cargarCanales(cat, document.getElementById('buscador').value);
+        }
+
+        document.getElementById('buscador').addEventListener('input', (e) => {
+            cargarCanales("Todos", e.target.value);
+        });
+
+        // Reloj
+        setInterval(() => {
+            document.getElementById('reloj').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // Inicio
+        cargarCanales();
+    </script>
+</body>
+</html>
